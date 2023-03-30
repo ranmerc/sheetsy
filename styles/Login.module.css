@@ -1,0 +1,29 @@
+.container {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  row-gap: 4rem;
+}
+
+@media (min-width: 450px) {
+  .container {
+    height: min-content;
+    width: 450px;
+    padding: 4rem 1rem 6rem;
+    border: 2px solid var(--sage6);
+    border-radius: 5px;
+  }
+
+  .layoutContainer {
+    height: 100vh;
+    height: 100dvh;
+    display: grid;
+    place-content: center;
+  }
+  .container:focus-within {
+    border-color: var(--green9);
+  }
+}

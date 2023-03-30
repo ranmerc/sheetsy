@@ -1,0 +1,60 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  row-gap: 2rem;
+  width: 90%;
+}
+
+.container > div {
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.3rem;
+}
+
+.label {
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 0.875rem;
+  color: var(--sage11);
+}
+
+.error {
+  composes: label;
+  color: red;
+  text-align: center;
+}
+
+.success {
+  composes: label;
+  color: var(--green9);
+  text-align: center;
+}
+
+.sending {
+  composes: label;
+  color: var(--blue9);
+  text-align: center;
+}
+
+.input {
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 1rem;
+  padding: 0.8rem 0.6rem;
+  border: 2px solid var(--sage7);
+  border-radius: 5px;
+}
+
+.button {
+  padding: 0.7em 0;
+  border-radius: 5px;
+  font-size: 1.25rem;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-weight: 500;
+  background-color: var(--green9);
+  color: #fff;
+  border: none;
+}
+
+.button:disabled {
+  background-color: var(--sage9);
+  cursor: not-allowed;
+}
