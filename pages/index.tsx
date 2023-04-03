@@ -1,12 +1,12 @@
 import Head from "next/head";
-import styles from "@/styles/Home.module.css";
+import styles from "@/styles/Index.module.css";
 import { useUser, useSupabaseClient } from "@supabase/auth-helpers-react";
 import { createServerSupabaseClient } from "@supabase/auth-helpers-nextjs";
 import { GetServerSideProps } from "next";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 
-export default function Home() {
+export default function Index() {
   const user = useUser();
   const supabaseClient = useSupabaseClient();
   const router = useRouter();
