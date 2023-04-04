@@ -1,16 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServerSupabaseClient } from "@supabase/auth-helpers-nextjs";
 import { Database } from "@/typings/supabase";
-import { getTableData, ifTableExists } from "@/lib/googleSheets";
+import { addTableData, getTableData, ifTableExists } from "@/lib/googleSheets";
 import { errorMessageObject, getURLPattern, keyParam } from "@/lib/utils";
 
 async function getHandler(
   req: NextApiRequest,
   res: NextApiResponse,
   sheetId: string,
-  tableName: string
+  tableName: string,
+  filterObject: Record<string, string>
 ) {
-  const tableData = await getTableData(sheetId, tableName);
+  const tableData = await getTableData(sheetId, tableName, filterObject);
 
   res.status(200).json({
     data: tableData,
@@ -25,9 +26,28 @@ async function postHandler(
   sheetId: string,
   tableName: string
 ) {
-  if (req.body === null) {
+  const body = req.body;
+
+  if (body === null || Object.keys(body).length === 0) {
     res.status(403).json(errorMessageObject("Body missing"));
     return;
+  }
+
+  if (!Array.isArray(body)) {
+    res.status(403).json(errorMessageObject("Array body expected"));
+    return;
+  }
+
+  const success = await addTableData(sheetId, tableName, body);
+
+  if (success) {
+    res.status(200).json({
+      data: ["Data added successfully"],
+      error: "",
+    });
+    return;
+  } else {
+    res.status(500).json(errorMessageObject("Unable to add data"));
   }
 }
 
@@ -133,15 +153,40 @@ export default async function handler(
     return;
   }
 
-  // C - insert(POST) R - read(GET) U - update(PUT) D - delete(DELETE)
+  // Filters recognition
+  let filters = req.query.filter;
+
+  if (!filters) {
+    filters = [];
+  }
+
+  if (!Array.isArray(filters)) {
+    filters = [filters];
+  }
+
+  // Single object that defines the filtering
+  // Ideally should have same attributes as headers
+  const filterObject = filters.reduce(
+    (accumulator: Record<string, string>, current: string) => {
+      // [key]value
+      const attributeArray = current.match(/\[(.+)\](.+)/);
+
+      if (attributeArray) {
+        const attributeName = attributeArray[1];
+        const attributeValue = attributeArray[2];
+
+        accumulator[attributeName] = attributeValue;
+      }
+
+      return accumulator;
+    },
+    {}
+  );
+
+  // C - insert(POST) R - read(GET) -> with filter U - update(PUT) D - delete(DELETE)
   if (req.method === "GET") {
-    return await getHandler(req, res, sheetId, tableName);
+    return await getHandler(req, res, sheetId, tableName, filterObject);
   } else if (req.method === "POST") {
     return await postHandler(req, res, sheetId, tableName);
   }
-
-  res.status(500).json({
-    data: [],
-    error: "Something went terribly wrong!",
-  });
 }

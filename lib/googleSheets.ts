@@ -1,7 +1,7 @@
 const { GoogleSpreadsheet } = require("google-spreadsheet");
 
-const googleDoc = async (sheet_id: string) => {
-  const doc = new GoogleSpreadsheet(sheet_id);
+const googleDoc = async (sheetId: string) => {
+  const doc = new GoogleSpreadsheet(sheetId);
 
   await doc.useServiceAccountAuth({
     client_email: process.env.GOOGLE_CLIENT_EMAIL,
@@ -11,9 +11,9 @@ const googleDoc = async (sheet_id: string) => {
   return doc;
 };
 
-const getTable = async (sheet_id: string, tableName: string) => {
+const getTable = async (sheetId: string, tableName: string) => {
   // assuming sheet and table exists
-  const document = await googleDoc(sheet_id);
+  const document = await googleDoc(sheetId);
 
   await document.loadInfo();
 
@@ -22,8 +22,25 @@ const getTable = async (sheet_id: string, tableName: string) => {
   return table;
 };
 
-export const ifTableExists = async (sheet_id: string, tableName: string) => {
-  const doc = await googleDoc(sheet_id);
+const dataFilter = (
+  row: any,
+  attributeNames: string[],
+  filterObject: Record<string, string>
+) => {
+  for (let i = 0; i < attributeNames.length; i++) {
+    if (filterObject[attributeNames[i]] && row[attributeNames[i]]) {
+      if (filterObject[attributeNames[i]] === row[attributeNames[i]]) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
+  return true;
+};
+
+export const ifTableExists = async (sheetId: string, tableName: string) => {
+  const doc = await googleDoc(sheetId);
 
   await doc.loadInfo();
 
@@ -32,8 +49,12 @@ export const ifTableExists = async (sheet_id: string, tableName: string) => {
   return tableTitleArray.some((title) => title === tableName);
 };
 
-export const getTableData = async (sheet_id: string, tableName: string) => {
-  const table = await getTable(sheet_id, tableName);
+export const getTableData = async (
+  sheetId: string,
+  tableName: string,
+  filterObject: Record<string, string>
+) => {
+  const table = await getTable(sheetId, tableName);
 
   let rows: any[] = [];
 
@@ -46,18 +67,57 @@ export const getTableData = async (sheet_id: string, tableName: string) => {
   }
 
   if (rows.length) {
-    const attributeNames = table.headerValues;
+    const attributeNames: string[] = table.headerValues;
 
-    return rows.map((row: any) => {
-      let obj: Record<string, string> = {};
+    return rows
+      .map((row: any) => {
+        let obj: Record<string, string> = {};
 
-      attributeNames.forEach((attribute: string) => {
-        obj[attribute] = row[attribute];
-      });
+        attributeNames.forEach((attribute: string) => {
+          obj[attribute] = row[attribute];
+        });
 
-      return obj;
-    });
+        return obj;
+      })
+      .filter((row) => dataFilter(row, attributeNames, filterObject));
   } else {
     return [];
   }
+};
+
+export const addTableData = async (
+  sheetId: string,
+  tableName: string,
+  data: any[]
+) => {
+  const table = await getTable(sheetId, tableName);
+
+  try {
+    await table.loadHeaderRow();
+  } catch (e) {
+    return false;
+  }
+
+  const attributes = table.headerValues;
+
+  // Normalize the insertion object
+  // Only take values of having the header key
+  // Ignore all others
+  let insertionObject = data.map((d) => {
+    let obj: Record<string, string> = {};
+
+    Object.keys(d).forEach((key) => {
+      if (attributes.includes(key)) {
+        obj[key] = d[key];
+      }
+    });
+
+    return obj;
+  });
+
+  for (let i = 0; i < insertionObject.length; i++) {
+    await table.addRow(insertionObject[i]);
+  }
+
+  return true;
 };
