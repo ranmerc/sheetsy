@@ -27,16 +27,15 @@ const dataFilter = (
   attributeNames: string[],
   filterObject: Record<string, string>
 ) => {
-  for (let i = 0; i < attributeNames.length; i++) {
-    if (filterObject[attributeNames[i]] && row[attributeNames[i]]) {
-      if (filterObject[attributeNames[i]] === row[attributeNames[i]]) {
-        return true;
-      } else {
+  return attributeNames.every((attribute) => {
+    if (filterObject[attribute] && row[attribute]) {
+      if (filterObject[attribute] !== row[attribute]) {
         return false;
       }
     }
-  }
-  return true;
+
+    return true;
+  });
 };
 
 export const ifTableExists = async (sheetId: string, tableName: string) => {
@@ -120,4 +119,41 @@ export const addTableData = async (
   }
 
   return true;
+};
+
+export const deleteTableData = async (
+  sheetId: string,
+  tableName: string,
+  filterObject: Record<string, string>
+) => {
+  const table = await getTable(sheetId, tableName);
+
+  let rows = [];
+
+  // table.getRows throws error if header row is not present
+  // also if header rows are duplicate
+  try {
+    rows = await table.getRows();
+  } catch (e) {
+    rows = [];
+  }
+
+  if (rows.length) {
+    const attributeNames: string[] = table.headerValues;
+
+    const rowsToDelete = rows.filter((row: any) =>
+      dataFilter(row, attributeNames, filterObject)
+    );
+
+    const count = rowsToDelete.length;
+
+    // Go in reverse because array size changes in loop
+    for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+      await rowsToDelete[i].delete();
+    }
+
+    return count;
+  } else {
+    return 0;
+  }
 };

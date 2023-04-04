@@ -1,7 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServerSupabaseClient } from "@supabase/auth-helpers-nextjs";
 import { Database } from "@/typings/supabase";
-import { addTableData, getTableData, ifTableExists } from "@/lib/googleSheets";
+import {
+  addTableData,
+  deleteTableData,
+  getTableData,
+  ifTableExists,
+} from "@/lib/googleSheets";
 import { errorMessageObject, getURLPattern, keyParam } from "@/lib/utils";
 
 async function getHandler(
@@ -49,6 +54,20 @@ async function postHandler(
   } else {
     res.status(500).json(errorMessageObject("Unable to add data"));
   }
+}
+
+async function deleteHandler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  sheetId: string,
+  tableName: string,
+  filterObject: Record<string, string>
+) {
+  const deletedCount = await deleteTableData(sheetId, tableName, filterObject);
+
+  res.status(200).json({
+    message: `Deleted ${deletedCount} rows`,
+  });
 }
 
 export default async function handler(
@@ -183,10 +202,12 @@ export default async function handler(
     {}
   );
 
-  // C - insert(POST) R - read(GET) -> with filter U - update(PUT) D - delete(DELETE)
+  // C - insert(POST) R - read(GET) -> with filter U - update(PATCH) D - delete(DELETE)
   if (req.method === "GET") {
     return await getHandler(req, res, sheetId, tableName, filterObject);
   } else if (req.method === "POST") {
     return await postHandler(req, res, sheetId, tableName);
+  } else if (req.method === "DELETE") {
+    return await deleteHandler(req, res, sheetId, tableName, filterObject);
   }
 }
