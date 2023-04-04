@@ -4,6 +4,7 @@ import { Database } from "@/typings/supabase";
 import {
   addTableData,
   deleteTableData,
+  updateTableData,
   getTableData,
   ifTableExists,
 } from "@/lib/googleSheets";
@@ -56,6 +57,44 @@ async function postHandler(
   }
 }
 
+async function patchHandler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  sheetId: string,
+  tableName: string,
+  filterObject: Record<string, string>
+) {
+  if (!filterObject || Object.keys(filterObject).length === 0) {
+    res
+      .status(403)
+      .json(errorMessageObject("At least 1 filter required for patch"));
+    return;
+  }
+
+  const body = req.body;
+
+  if (body === null || Object.keys(body).length === 0) {
+    res.status(403).json(errorMessageObject("Body missing"));
+    return;
+  }
+
+  if (Array.isArray(body)) {
+    res.status(403).json(errorMessageObject("Singular update object expected"));
+    return;
+  }
+
+  const rowsUpdated = await updateTableData(
+    sheetId,
+    tableName,
+    filterObject,
+    body
+  );
+
+  res.status(200).json({
+    message: `Updated ${rowsUpdated} rows`,
+  });
+}
+
 async function deleteHandler(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -63,10 +102,10 @@ async function deleteHandler(
   tableName: string,
   filterObject: Record<string, string>
 ) {
-  const deletedCount = await deleteTableData(sheetId, tableName, filterObject);
+  const rowsDeleted = await deleteTableData(sheetId, tableName, filterObject);
 
   res.status(200).json({
-    message: `Deleted ${deletedCount} rows`,
+    message: `Deleted ${rowsDeleted} rows`,
   });
 }
 
@@ -209,5 +248,7 @@ export default async function handler(
     return await postHandler(req, res, sheetId, tableName);
   } else if (req.method === "DELETE") {
     return await deleteHandler(req, res, sheetId, tableName, filterObject);
+  } else if (req.method === "PATCH") {
+    return await patchHandler(req, res, sheetId, tableName, filterObject);
   }
 }

@@ -121,6 +121,48 @@ export const addTableData = async (
   return true;
 };
 
+export const updateTableData = async (
+  sheetId: string,
+  tableName: string,
+  filterObject: Record<string, string>,
+  updateObject: Record<string, string>
+) => {
+  const table = await getTable(sheetId, tableName);
+
+  let rows = [];
+
+  // table.getRows throws error if header row is not present
+  // also if header rows are duplicate
+  try {
+    rows = await table.getRows();
+  } catch (e) {
+    rows = [];
+  }
+
+  if (rows.length) {
+    const attributeNames: string[] = table.headerValues;
+
+    const rowsToUpdate = rows.filter((row: any) =>
+      dataFilter(row, attributeNames, filterObject)
+    );
+
+    const count = rowsToUpdate.length;
+
+    for (const row of rowsToUpdate) {
+      for (const attribute of attributeNames) {
+        if (row[attribute] && updateObject[attribute]) {
+          row[attribute] = updateObject[attribute];
+          await row.save();
+        }
+      }
+    }
+
+    return count;
+  } else {
+    return 0;
+  }
+};
+
 export const deleteTableData = async (
   sheetId: string,
   tableName: string,
